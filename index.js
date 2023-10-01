@@ -2,9 +2,16 @@ const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 var simplex = new SimplexNoise();
 
-const dotDistance = 5;
+const dotDistance = 2;
+const arrowLength = 10;
+const numberOfParticles = 1400;
+const particleRadius = 2;
+const particleSpeed = 2;
+const particleOpacity = 0.01;
+const showArrows = false;
 
 const dotLength = (canvas.width / dotDistance) * (canvas.height / dotDistance);
+let highlightedDotIndex = 0;
 let dots = [];
 for (let j = 0; j < canvas.height / dotDistance; j++) {
   for (let i = 0; i < canvas.width / dotDistance; i++) {
@@ -19,17 +26,17 @@ for (let j = 0; j < canvas.height / dotDistance; j++) {
   }
 }
 
-let particles = Array(1000)
+let particles = Array(numberOfParticles)
   .fill(0)
   .map((_, i) => ({
     position: {
       x: Math.round(canvas.width * Math.random()),
       y: Math.round(canvas.height * Math.random()),
     },
-    color: "rgba(1,1,1,0.01)",
-    radius: 1,
+    color: `rgba(1,1,1,${particleOpacity})`,
+    radius: particleRadius,
     speed: 1,
-    angle: 0,
+    angle: 360 * Math.random(),
   }));
 
 let mouseDot = {
@@ -40,6 +47,10 @@ let mouseDot = {
 };
 canvas.addEventListener("mousemove", (e) => {
   mouseDot.position = { x: e.offsetX, y: e.offsetY };
+  highlightedDotIndex =
+    Math.round(mouseDot.position.y / dotDistance) *
+      Math.round(canvas.width / dotDistance) +
+    Math.round(mouseDot.position.x / dotDistance);
 });
 canvas.addEventListener("click", () => {
   mouseDot.radius = 20;
@@ -64,11 +75,11 @@ const renderArrow = (arrowLength) => (dot, index) => {
   const deltaY = Math.sin((dot.angle * Math.PI) / 180) * arrowLength;
   ctx.moveTo(dot.position.x, dot.position.y);
   ctx.lineTo(dot.position.x + deltaX, dot.position.y + deltaY);
-  ctx.lineWidth = 0.4;
-  ctx.strokeStyle = `hsl(0, 50%, ${(100 * dot.position.x) / canvas.width}%)`; //dot.color;
+  ctx.lineWidth = highlightedDotIndex === index ? 4 : 1.2;
+  ctx.strokeStyle = dot.color;
   ctx.stroke();
   renderDot({
-    radius: 1,
+    radius: highlightedDotIndex === index ? 14 : 2,
     position: { x: dot.position.x, y: dot.position.y },
     color: dot.color,
   });
@@ -82,24 +93,24 @@ const renderDot = (dot) => {
   ctx.closePath();
 };
 
-console.log(canvas.width / dotDistance);
-let highlightedDotIndex = 0;
+let lookupDotIndex = 0;
 
 const updateParticlesBySpeed = (_particles) => {
   for (let i = 0; i < _particles.length; i++) {
     // given particle's position, what's the closest direction
-    highlightedDotIndex =
+    lookupDotIndex =
       Math.round(_particles[i].position.y / dotDistance) *
         Math.round(canvas.width / dotDistance) +
       Math.round(_particles[i].position.x / dotDistance);
 
-    if (dots[highlightedDotIndex]) {
-      _particles[i].position.x += Math.cos(
-        (dots[highlightedDotIndex].angle * Math.PI) / 180
-      );
-      _particles[i].position.y += Math.sin(
-        (dots[highlightedDotIndex].angle * Math.PI) / 180
-      );
+    if (dots[lookupDotIndex]) {
+      // console.log(_particles[i].angle, dots[lookupDotIndex].angle);
+      _particles[i].angle =
+        (dots[lookupDotIndex].angle + 4 * _particles[i].angle) / 5;
+      _particles[i].position.x +=
+        particleSpeed * Math.cos((_particles[i].angle * Math.PI) / 180);
+      _particles[i].position.y +=
+        particleSpeed * Math.sin((_particles[i].angle * Math.PI) / 180);
     }
   }
 };
@@ -112,7 +123,7 @@ function update() {
 function render() {
   // ctx.clearRect(0, 0, canvas.width, canvas.height);
   particles.map(renderDot);
-  // dots.map(renderArrow(dotDistance));
+  if (showArrows) dots.map(renderArrow(arrowLength));
   // renderDot(mouseDot);
 }
 
